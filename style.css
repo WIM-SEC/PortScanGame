@@ -1,0 +1,509 @@
+html{
+  padding: 0;
+  margin: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* 上寄せ */
+    min-height: 100vh;
+    background-color: #f0f2f5;
+    color: #333;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    /* フッターを最下部に固定するためのFlexbox設定 */
+    flex-direction: column; /* 子要素を縦に並べる */
+}
+
+.game-wrapper {
+    background-color: #ffffff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 1200px;
+    width: 90%;
+    box-sizing: border-box;
+    flex-grow: 1; /* ★追加：game-wrapperが残りの垂直スペースを埋める */
+    margin: 0 auto 15px auto;
+}
+
+h1 {
+    color: #007bff;
+    margin-bottom: 15px;
+    font-size: 2.5em;
+    text-align: center;
+}
+
+.description {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #555;
+    line-height: 1.6;
+}
+
+.mission-objective-panel {
+    background-color: #e8f7ff; /* 明るい青の背景 */
+    border: 1px solid #a7d9f7;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    margin-bottom: 30px;
+    text-align: center;
+}
+.mission-objective-panel h2 {
+    color: #0056b3;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+.mission-objective-content {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ★★★ レイアウト再構成のための主要コンテナ ★★★ */
+.game-main-content, /* ポートリストとログを横並びにするコンテナ */
+.message-status-group /* メッセージとステータスを縦並びにするコンテナ */
+{
+    display: flex;
+    flex-wrap: wrap; /* 小さい画面で折り返す */
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.game-main-content{
+  height: 450px; /* ポートリストとログの合計高さを固定 */
+}
+
+/* 各パネルの基本スタイル */
+.port-list-container,
+.console-log-container,
+.message-display-panel,
+.status-panel
+{
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+}
+
+/* ★★★ 各セクション内のパネル幅調整 ★★★ */
+/* ポートリストとログ (横並び、高さ固定、幅50%ずつ) */
+.game-main-content .port-list-container,
+.game-main-content .console-log-container {
+    flex: 1; /* 均等な幅割り当て */
+    width: calc(50% - 10px); /* 幅50% - gapの半分 */
+    max-width: calc(50% - 10px); /* 最大幅も50% */
+    min-width: 300px; /* 折り返し前の最小幅 */
+    height: 100%; /* 親の高さに合わせる */
+    display: flex;
+    flex-direction: column;
+}
+
+/* メッセージとステータス (縦並び、幅100%) */
+.message-status-group {
+    flex-direction: column; /* 縦並び */
+    align-items: center; /* 中央寄せ */
+    gap: 15px; /* パネル間の縦の間隔 */
+}
+.message-status-group .message-display-panel,
+.message-status-group .status-panel {
+    flex: 1; /* 均等に高さを取る */
+    width: 100%; /* 幅100% */
+    max-width: 800px; /* 最大幅 */
+    min-height: 100px; /* 最小高 */
+}
+
+
+/* 各パネルのタイトル */
+h2 {
+    color: #007bff;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    text-align: center;
+}
+
+/* メッセージ表示パネル */
+.message-display {
+    padding: 10px;
+    background-color: #fff3e0;
+    border: 1px solid #ffcc80;
+    color: #e65100;
+    font-weight: bold;
+    text-align: center;
+    flex-grow: 1; /* 親の高さに合わせて伸びる */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* ポートリスト */
+.port-list {
+    flex-grow: 1; /* 親の高さに合わせて伸びる */
+    max-height: none; /* max-heightを解除し、親のflex-growに任せる */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    padding: 10px;
+}
+.port-item.closed { /* 閉鎖ポートのスタイル */
+    opacity: 0.5; /* 半透明 */
+    pointer-events: none; /* クリック不可に */
+    background-color: #f0f0f0;
+}
+.port-item.closed .release-button { /* 解放ボタンのみ表示させる場合は別ルール */
+    display: inline-block;
+    pointer-events: auto;
+}
+
+.port-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.port-item:last-child {
+    border-bottom: none;
+}
+.port-info {
+    flex-grow: 1;
+    font-size: 1em;
+    color: #555;
+}
+.port-number {
+    font-weight: bold;
+    color: #000;
+    margin-right: 8px;
+}
+.port-service {
+    font-style: italic;
+    color: #666;
+}
+.port-version {
+    font-size: 0.9em;
+    color: #888;
+}
+
+.port-actions button {
+    padding: 5px 10px;
+    margin-left: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+    border: 1px solid;
+}
+
+.investigate-button {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+.investigate-button:hover {
+    background-color: #0056b3;
+}
+.release-button {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+.release-button:hover {
+    background-color: #218838;
+}
+.close-button-port {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+.close-button-port:hover {
+    background-color: #c82333;
+}
+
+
+/* ステータスバー */
+.status-panel {
+    display: flex;
+    flex-direction: column; /* 縦並び */
+    align-items: center;
+    gap: 15px; /* バー間の間隔 */
+    width: 100%; /* 親の幅に合わせる */
+}
+
+.status-bar { /* 各プログレスバーとそのラベル */
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.status-bar label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+}
+progress {
+    width: 90%;
+    height: 20px;
+    appearance: none;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+progress::-webkit-progress-bar { background-color: #e9ecef; border-radius: 5px; }
+progress::-webkit-progress-value { background-color: #4CAF50; border-radius: 5px; }
+progress::-moz-progress-bar { background-color: #4CAF50; }
+.risk-bar progress::-webkit-progress-value { background-color: #dc3545; }
+.risk-bar progress::-moz-progress-bar { background-color: #dc3545; }
+.usability-bar progress::-webkit-progress-value { background-color: #007bff; }
+.usability-bar progress::-moz-progress-bar { background-color: #007bff; }
+
+
+/* 攻撃者ログ */
+.console-log-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px; /* 最小高さを設定 */
+    height: 100%; /* 親の高さに合わせる */
+    overflow: hidden; /* コンテンツ自体にスクロールバーを持たせるため */
+}
+.attacker-log {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    background-color: #222;
+    color: #0f0;
+    padding: 10px;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    flex-grow: 1; /* 残りのスペースを埋める */
+    overflow-y: auto; /* ログエリアにスクロールバーを持たせる */
+}
+.log-entry {
+    margin-bottom: 5px;
+    border-bottom: 1px dashed #444;
+    padding-bottom: 3px;
+}
+.log-entry:last-child {
+    border-bottom: none;
+}
+.log-time { color: #888; margin-right: 5px; }
+.log-ip { color: #00ffff; }
+.log-critical { color: #ff0000; font-weight: bold; }
+.log-info { color: #00ff00; }
+.log-warning { color: #ffff00; }
+
+
+/* アクションボタン（スタート/リセット） */
+.action-button {
+    padding: 12px 25px;
+    margin: 20px auto;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: block; /* 中央寄せ */
+    width: 80%; /* 幅調整 */
+    max-width: 300px; /* 最大幅 */
+}
+.start-btn { background-color: #28a745; color: white; }
+.start-btn:hover { background-color: #218838; }
+.reset-btn { background-color: #ffc107; color: #333; }
+.reset-btn:hover { background-color: #e0a800; }
+.full-width-button { /* HTMLに存在するためスタイル調整 */
+    width: calc(100% - 40px); /* 左右のpadding分引く */
+    max-width: 600px; /* 大きすぎないように */
+}
+
+
+/* モーダルダイアログ */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background-color: #fefefe;
+    padding: 30px;
+    border: 1px solid #888;
+    border-radius: 10px;
+    max-width: 700px;
+    width: 90%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    position: relative;
+}
+.modal-close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    cursor: pointer;
+}
+.modal-close-button:hover, .modal-close-button:focus {
+    color: #333;
+}
+#modal-port-title {
+    font-size: 1.8em;
+    color: #007bff;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+.modal-detail-section {
+    margin-bottom: 20px;
+}
+.modal-detail-section h4 {
+    color: #0056b3;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+.modal-detail-section p {
+    font-size: 1em;
+    line-height: 1.6;
+    margin-left: 15px;
+    color: #444;
+}
+
+/* ゲームリザルトオーバーレイ */
+.game-over-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    font-size: 2em;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+.game-over-overlay button {
+    margin-top: 20px;
+    padding: 15px 30px;
+    font-size: 0.8em;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.game-over-overlay button:hover {
+    background-color: #0056b3;
+}
+
+/* レスポンシブ対応 (モバイル優先ではないので、min-widthでPC向けを定義) */
+@media (min-width: 768px) {
+    .game-main-content,
+    .message-status-group {
+        flex-wrap: nowrap; /* PCでは折り返さない */
+    }
+
+    /* ポートリストとログ (横並び、高さ同じ、幅50%ずつ) */
+    .game-main-content .port-list-container,
+    .game-main-content .console-log-container {
+        flex: 1; /* 均等な幅割り当て */
+        width: calc(50% - 10px); /* 50% - gapの半分 */
+        max-width: calc(50% - 10px); /* 最大幅も50% */
+        /* height: 100%; は親のgame-main-contentが高さを持つため */
+    }
+
+    /* メッセージとステータス (縦並び、幅100%) */
+    /* このグループ自体は縦並びでよい */
+    .message-status-group {
+        flex-direction: row; /* PCでは横並び */
+        justify-content: space-between;
+        align-items: stretch; /* 高さを揃える */
+        gap: 20px; /* 横並び時のgap */
+    }
+    .message-status-group .message-display-panel,
+    .message-status-group .status-panel {
+        flex: 1; /* 均等に幅を取る */
+        max-width: none; /* 最大幅を解除 */
+        min-height: 120px; /* 最小高さを設定 */
+    }
+    .status-panel { /* ステータスパネルのみ特別調整 */
+        flex-direction: column; /* バーは縦並び */
+        justify-content: center;
+        align-items: center;
+        gap: 15px; /* バー間の隙間 */
+    }
+    .status-panel .status-bar {
+        flex: none; /* 均等幅を解除 */
+        width: 100%; /* フル幅に戻す */
+        padding: 10px;
+    }
+    .status-panel .status-bar label {
+        font-size: 1em;
+        margin-bottom: 5px;
+    }
+    .status-panel progress {
+        width: 90%;
+        height: 20px;
+    }
+}
+
+/* ... (既存のCSSコード) ... */
+
+/* フッター */
+footer {
+    width: 100%; /* 親要素 (body) の幅いっぱいに広がる */
+    text-align: center; /* 中央寄せ */
+    padding: 10px 0; /* 上下10pxのパディング */
+    margin-top: auto; /* Flexboxでフッターを最下部に押し出す */
+    background-color: #e9ecef; /* 背景色 */
+    color: #6c757d; /* テキスト色 */
+    font-size: 0.85em; /* フォントサイズ */
+    border-top: 1px solid #dee2e6; /* 上部の境界線 */
+    /* position: fixed; や float: left/right; などがあれば削除してください */
+    box-sizing: border-box; /* paddingを幅に含める */
+    flex-shrink: 0; /* フッターが縮まないようにする */
+}
+
+footer a {
+    color: #6c757d; /* リンクの色 */
+    text-decoration: none; /* 下線なし */
+}
+
+footer a:hover {
+    text-decoration: underline; /* ホバーで下線 */
+}
+
+/* ... (以降の既存のCSSコード) ... */

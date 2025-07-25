@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポートスキャン体験ゲーム</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <h1>ポートスキャン体験ゲーム</h1>
+
+        <p class="description">
+            あなたは企業のシステム管理者です。既にサーバーは攻撃者からスキャンされ、多数のポートが開いています。<br>
+            <b>サービス可用性を100%維持したまま、サーバーリスクを0%にする</b>ことがあなたのミッションです。
+        </p>
+
+        <div class="mission-objective-panel">
+            <h2>想定</h2>
+            <div id="mission-objective-text" class="mission-objective-content">
+                Webサイトとメールの送受信機能を維持しつつ、サーバーリスクを0%にする！
+            </div>
+        </div>
+
+        <button id="start-game-button" class="action-button start-btn full-width-button">ゲーム開始</button>
+        <button id="reset-game-button" class="action-button reset-btn full-width-button" style="display: none;">ゲームリセット</button>
+
+        <div class="game-main-content">
+            <div class="port-list-container">
+                <h2>開いているポート一覧</h2>
+                <div id="port-list" class="port-list">
+                    </div>
+            </div>
+            
+            <div class="console-log-container">
+                <h2>攻撃者ログ</h2>
+                <div id="attacker-log" class="attacker-log">
+                    </div>
+            </div>
+        </div>
+
+        <div class="message-status-group">
+            <div class="message-display-panel">
+                <h2>ゲームメッセージ</h2>
+                <div id="message-area" class="message-display">
+                    ゲーム開始ボタンを押してください。
+                </div>
+            </div>
+
+            <div class="status-panel">
+                <div class="status-bar risk-bar">
+                    <label for="risk-level">サーバーリスクレベル:</label>
+                    <progress id="risk-level" value="100" max="100"></progress>
+                    <span id="risk-value">100 %</span>
+                </div>
+                <div class="status-bar usability-bar">
+                    <label for="usability-level">サービス可用性:</label>
+                    <progress id="usability-level" value="100" max="100"></progress>
+                    <span id="usability-value">100 %</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="port-detail-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close-button">&times;</span>
+            <h3 id="modal-port-title"></h3>
+            <div class="modal-detail-section">
+                <h4>一般的な用途</h4>
+                <p id="modal-port-usage"></p>
+            </div>
+            <div class="modal-detail-section">
+                <h4>セキュリティ上のリスク</h4>
+                <p id="modal-port-risk"></p>
+            </div>
+            <div class="modal-detail-section" id="modal-port-vulnerability-section" style="display:none;">
+                <h4>既知の脆弱性 (バージョン固有)</h4>
+                <p id="modal-port-vulnerability-text"></p>
+            </div>
+            <div class="modal-detail-section" id="modal-port-hint-section" style="display:none;">
+                <h4>対策のヒント</h4>
+                <p id="modal-port-hint-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-result-overlay" class="game-over-overlay" style="display: none;">
+        <div class="result-content">
+            <h2 id="result-title">ゲーム結果</h2>
+            <p id="result-final-status"></p>
+            <div class="result-details">
+                <p>最終サーバーリスク: <span id="final-risk-value"></span></p>
+                <p>最終可用性: <span id="final-usability-value"></span></p>
+            </div>
+            <div class="result-analysis">
+                <h3>あなたのポート管理は？</h3>
+                <p id="analysis-text"></p>
+            </div>
+            <button id="restart-game-button">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <footer class="main-footer">
+        <div>©WIM-CC 2022-2025 <a href="https://w-haruto.wim-cc.com/works/license/" target="_blank">利用規約</a></div>
+        <div>ポートスキャン体験ゲーム（2025.07.24）</div>
+    </footer>
+    </body>
+</html>
