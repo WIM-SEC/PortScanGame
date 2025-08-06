@@ -13,8 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageArea = document.getElementById('message-area');
     const startGameButton = document.getElementById('start-game-button');
     const resetGameButton = document.getElementById('reset-game-button');
-    // const gameTimerSpan = document.getElementById('game-timer'); // HTMLから削除済
-    // const gameScoreSpan = document.getElementById('game-score'); // HTMLから削除済
 
     const modal = document.getElementById('port-detail-modal');
     const modalCloseButton = document.querySelector('#port-detail-modal .modal-close-button');
@@ -28,9 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let gameActive = false;
     let attackLogIntervalId;
-    // let score = 0; // スコア概念を削除
-    let risk = 100; // サーバーリスクレベル (初期100%)
-    let usability = 100; // サービス可用性 (初期100%)
+    let risk = 100;
+    let usability = 100;
 
     const MAX_RISK = 100;
     const MIN_USABILITY = 0;
@@ -49,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { port: 8080, service: 'HTTP', version: 'Apache Tomcat 7.0.x', type: 'vulnerable', usage: 'Webアプリケーションサーバーの管理インターフェースやテスト環境でよく利用されるポート。', risk: '高リスク。管理画面がインターネットに公開されていると、不正ログインや設定改ざんの標的となります。', vulnerability: 'Apache Tomcat 7.0.xには、特定の条件下で情報漏洩やセッション固定攻撃のリスクが報告されています。', hint: '本番環境でこのポートを公開するのは避けるべきです。必要であればアクセス元を制限してください。', risk_value: 25, penalty_value: 0 },
 
         // 不要だが開いている高リスクポート (閉鎖推奨)
-        { port: 23, service: 'Telnet', version: 'Telnetd 0.17', type: 'unnecessary_high_risk', usage: 'リモートからコマンドを実行するためのプロトコル。通信が暗号化されません。', risk: '高リスク。パスワードを含むすべての通信が平文で流れるため、盗聴される危険性があります。', vulnerability: 'Telnet自体に脆弱性があるわけではありませんが、平文通信であるため現在のセキュリティ標準では非推奨です。', hint: 'SSH (22番) の利用に切り替えるべきです。', risk_value: 20, penalty_value: 0 },
+        { port: 23, service: 'Telnet', version: 'Telnetd 0.17', type: 'unnecessary_high_risk', usage: 'リモートからコマンドを実行するためのプロトコル。通信が暗号化されません。', risk: '高リスク。パスワードを含むすべての通信が平文で流れるため、盗聴される危険があります。', vulnerability: 'Telnet自体に脆弱性があるわけではありませんが、平文通信であるため現在のセキュリティ標準では非推奨です。', hint: 'SSH (22番) の利用に切り替えるべきです。', risk_value: 20, penalty_value: 0 },
         { port: 3389, service: 'RDP', version: 'Microsoft RDP 8.1', type: 'unnecessary_high_risk', usage: 'Windowsのリモートデスクトップ接続プロトコル。', risk: '中リスク。総当たり攻撃や辞書攻撃の標的になりやすく、成功するとサーバーを直接操作されます。', vulnerability: 'RDPのプロトコル自体には脆弱性は少ないですが、認証が不十分だとブルートフォース攻撃に弱いです。', hint: '公開が必要な場合、二段階認証の設定、アクセス元IP制限、VPN経由での利用を強く推奨します。', risk_value: 15, penalty_value: 0 },
         { port: 139, service: 'NetBIOS-ssn', version: 'Samba 4.x', type: 'unnecessary', usage: 'Windowsのファイル共有サービス。', risk: '低リスク。通常、インターネットに公開すべきではありません。内部ネットワークでの利用が前提です。', vulnerability: null, hint: '不要な場合はすぐに閉鎖してください。', risk_value: 5, penalty_value: 0 },
         { port: 445, service: 'SMB', version: 'Windows Server', type: 'unnecessary', usage: 'Windowsのファイル共有サービス。139番と合わせて使われることが多い。', risk: '低リスク。ワーム感染の経路になることもあります。内部ネットワークでの利用が前提です。', vulnerability: null, hint: '不要な場合はすぐに閉鎖してください。', risk_value: 5, penalty_value: 0 },
@@ -62,15 +59,24 @@ document.addEventListener('DOMContentLoaded', () => {
         { port: 6000, service: 'X11', version: 'X.Org', type: 'unnecessary', usage: 'X Window Systemのグラフィック表示。', risk: '高リスク。認証が不十分だと、リモートから画面操作やキーロギングが可能になる危険性があります。', vulnerability: null, hint: 'グラフィカルなリモート操作が必要な場合は、より安全なRDPやVNC over SSHなどを利用すべきです。', risk_value: 15, penalty_value: 0 },
     ];
 
-    let currentOpenPorts = []; // 現在開いているポート (初期状態から減っていく)
-    let initialTotalRisk = 0; // ゲーム開始時の合計リスク値
+    let currentOpenPorts = [];
+    let initialTotalRisk = 0;
+    let initialTotalPenalty = 0;
+    let currentTotalRisk = 0;
+    let currentTotalPenalty = 0;
 
-    // 初期化関数
-    function initGame() {
+function initGame() {
+        if (attackLogIntervalId) {
+            clearInterval(attackLogIntervalId);
+        }
+
         gameActive = false;
-        // score = 0; // スコアはHTMLから削除済みなので不要
-        risk = 0;
+        risk = 100;
         usability = 100;
+        initialTotalRisk = 0;
+        initialTotalPenalty = 0;
+        currentTotalRisk = 0;
+        currentTotalPenalty = 0;
 
         portListElement.innerHTML = '';
         attackerLogElement.innerHTML = '';
@@ -79,33 +85,35 @@ document.addEventListener('DOMContentLoaded', () => {
         startGameButton.style.display = 'block';
         resetGameButton.style.display = 'none';
 
-        // ポートをランダムに選んで表示
         currentOpenPorts = [];
         const requiredPorts = allPorts.filter(p => p.type === 'required');
         const optionalPorts = allPorts.filter(p => p.type !== 'required');
 
-        // 必須ポートは必ず含める
         requiredPorts.forEach(p => currentOpenPorts.push({ ...p, is_closed: false }));
 
-        // その他ポートからランダムに8-12個選ぶ
-        const numToSelect = Math.floor(Math.random() * (12 - 8 + 1)) + 8;
+        // 修正: 選択するポートの数を、オプションポートの総数以下に制限
+        const maxOptionalPorts = optionalPorts.length;
+        const numToSelect = Math.min(Math.floor(Math.random() * (12 - 8 + 1)) + 8, maxOptionalPorts);
+        
         const shuffledOptional = shuffleArray(optionalPorts);
         for(let i = 0; i < numToSelect; i++) {
-            currentOpenPorts.push({ ...shuffledOptional[i], is_closed: false });
+            // 修正: ポートが存在するか確認してから追加
+            if (shuffledOptional[i] !== undefined) {
+                currentOpenPorts.push({ ...shuffledOptional[i], is_closed: false });
+            }
         }
         
-        // ★修正：ソートしてからレンダリングすることで、常にポート番号順に表示
         currentOpenPorts.sort((a, b) => a.port - b.port);
 
-        // 初期リスク値を計算
         initialTotalRisk = currentOpenPorts.reduce((sum, port) => sum + (port.risk_value || 0), 0);
-        risk = initialTotalRisk; // ゲーム開始時は合計リスク値からスタート
+        initialTotalPenalty = requiredPorts.reduce((sum, port) => sum + (port.penalty_value || 0), 0);
+        currentTotalRisk = initialTotalRisk;
+        currentTotalPenalty = 0;
 
         renderPortList();
         updateStatusDisplay();
     }
 
-    // 配列をシャッフルするヘルパー関数
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -114,12 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return array;
     }
 
-    // ポートリストのレンダリング
     function renderPortList() {
         portListElement.innerHTML = '';
         if (currentOpenPorts.length === 0) {
             portListElement.innerHTML = '<p style="text-align:center; color:#888;">全てのポートが閉じられました！</p>';
-            // リスク0ならクリア判定
             if (risk <= 0 && usability >= 100 && gameActive) {
                 endGame('ミッション成功');
             }
@@ -147,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
             portListElement.appendChild(portItem);
         });
 
-        // ボタンにイベントリスナーを設定
         document.querySelectorAll('.investigate-button').forEach(button => {
             button.onclick = (e) => showPortDetail(parseInt(e.target.dataset.port));
         });
@@ -159,8 +164,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ステータス表示の更新
     function updateStatusDisplay() {
+        if (initialTotalRisk > 0) {
+            risk = Math.round((currentTotalRisk / initialTotalRisk) * 100);
+        } else {
+            risk = 0;
+        }
+
+        if (initialTotalPenalty > 0) {
+             usability = 100 - Math.round((currentTotalPenalty / initialTotalPenalty) * 100);
+        } else {
+            usability = 100;
+        }
+
         risk = Math.max(0, Math.min(risk, MAX_RISK));
         usability = Math.max(0, Math.min(usability, 100));
 
@@ -172,13 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
         riskLevelProgress.style.accentColor = (risk > 70) ? '#dc3545' : ((risk > 40) ? '#ffc107' : '#4CAF50');
         usabilityLevelProgress.style.accentColor = (usability < 30) ? '#dc3545' : ((usability < 60) ? '#ffc107' : '#007bff');
 
-        // ゲーム勝利条件判定
         if (gameActive && risk <= 0 && usability >= 100) {
             endGame('ミッション成功');
         }
     }
 
-    // 攻撃者ログの追加
     function addAttackerLog(logText, type = 'info') { 
         const logEntry = document.createElement('div');
         logEntry.classList.add('log-entry');
@@ -195,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ポート詳細表示モーダル
     function showPortDetail(portNumber) {
         const port = allPorts.find(p => p.port === portNumber);
         if (!port) return;
@@ -213,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
     }
 
-    // ポートを閉鎖する
     function closePort(portNumber) {
         if (!gameActive) return;
 
@@ -223,11 +235,11 @@ document.addEventListener('DOMContentLoaded', () => {
         port.is_closed = true;
 
         if (port.type === 'required') {
-            usability -= port.penalty_value;
+            currentTotalPenalty += port.penalty_value;
             messageArea.textContent = `エラー！${port.port}番(${port.service})は必須ポートです！サービス可用性が低下しました。`;
             addAttackerLog(`[ALERT] 外部からの ${port.port}/TCP アクセスが困難になりました。サービス可用性が低下。`, 'critical');
         } else {
-            risk -= port.risk_value;
+            currentTotalRisk -= port.risk_value;
             messageArea.textContent = `${port.port}番(${port.service})を閉鎖しました。サーバーリスクが軽減されました。`;
             addAttackerLog(`[INFO] 外部からの ${port.port}/TCP サービスが停止されました。`, 'info');
         }
@@ -235,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatusDisplay();
     }
 
-    // ポートを解放する (閉鎖したポートを再度開く)
     function releasePort(portNumber) {
         if (!gameActive) return;
 
@@ -245,11 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         port.is_closed = false;
 
         if (port.type === 'required') {
-            usability += port.penalty_value;
+            currentTotalPenalty -= port.penalty_value;
             messageArea.textContent = `${port.port}番(${port.service})を解放しました。サービス可用性が回復しました。`;
             addAttackerLog(`[INFO] 外部からの ${port.port}/TCP サービスが回復しました。`, 'info');
         } else {
-            risk += port.risk_value;
+            currentTotalRisk += port.risk_value;
             messageArea.textContent = `${port.port}番(${port.service})を解放しました。サーバーリスクが増加しました。`;
             addAttackerLog(`[WARNING] 外部からの ${port.port}/TCP サービスが再び開放されました。潜在的なリスク増加。`, 'warning');
         }
@@ -257,20 +268,24 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatusDisplay();
     }
 
-    // 攻撃者ログの生成ロジック (リスク増減は行わない)
     function generateAttackerLogs() {
         if (!gameActive) return;
 
-        const activePorts = currentOpenPorts.filter(p => !p.is_closed); // 開いているポート
+        const activePorts = currentOpenPorts.filter(p => !p.is_closed);
         
+        // 修正：アクティブなポートがなければログを生成しない
         if (activePorts.length === 0) {
             addAttackerLog('[INFO] 攻撃対象のポートがありません。', 'info');
             return;
         }
 
-        const targetPorts = activePorts.filter(p => p.risk_value > 0); // 危険なポートを優先的に攻撃
+        const targetPorts = activePorts.filter(p => p.risk_value > 0);
         const randomPort = (targetPorts.length > 0 ? targetPorts : activePorts)[Math.floor(Math.random() * (targetPorts.length > 0 ? targetPorts.length : activePorts.length))];
-        if (!randomPort) return;
+        
+        // 修正：randomPortがundefinedでないことを確認してから処理
+        if (!randomPort) {
+            return;
+        }
 
         const attackTypes = ['scan', 'exploit', 'bruteforce'];
         const randomAttackType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
@@ -297,32 +312,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         addAttackerLog(logMessage, logType);
-        // updateStatusDisplay(); // ★修正：ログからのリスク増減がないため、ここでは不要
     }
 
-
-    // ゲーム開始
     function startGame() {
         if (gameActive) return;
 
-        initGame(); // 初期化
+        initGame();
         gameActive = true;
         
         startGameButton.style.display = 'none';
         resetGameButton.style.display = 'block';
         messageArea.textContent = `ゲーム開始！開いているポートを調査し、不要なものを閉鎖しましょう。`;
 
-        // 攻撃者ログの生成を継続的に開始
-        attackLogIntervalId = setInterval(generateAttackerLogs, 3000); // 3秒ごと
+        attackLogIntervalId = setInterval(generateAttackerLogs, 3000);
     }
 
-    // ゲーム終了 (クリア判定を含む)
     function endGame(reason) {
-        // ゲームがクリアされた場合、ログ生成は継続せず、ゲームオーバーオーバーレイで結果を表示
-        gameActive = false; // ゲーム自体は非アクティブに
-        clearInterval(attackLogIntervalId); // ログ生成停止
+        gameActive = false;
+        clearInterval(attackLogIntervalId);
 
-        // 全てのポートボタンを無効化
         document.querySelectorAll('.port-actions button').forEach(btn => btn.disabled = true);
 
         let finalStatusText = '';
@@ -338,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalStatusText = 'まだサーバーにリスクが残っています。';
             } else if (usability <= 0) {
                 finalStatusText = 'サービス可用性が低下しすぎました。';
-            } else { // 想定外の終了
+            } else {
                 finalStatusText = 'ゲームが終了しました。';
             }
         }
@@ -360,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.appendChild(gameOverOverlay);
 
-        // 分析テキストの生成
         const analysisTextElement = gameOverOverlay.querySelector('#analysis-text');
         let analysis = '';
         if (risk <= 0 && usability >= 100) {
@@ -376,29 +383,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('restartgamebutton').onclick = () => {
             gameOverOverlay.remove();
-            initGame(); // ゲームを初期状態に戻す
         };
     }
 
-    // モーダルを閉じる
     modalCloseButton.onclick = () => {
         modal.style.display = 'none';
     };
-    window.onclick = (event) => { // モーダル外クリックで閉じる
+    window.onclick = (event) => {
         if (event.target == modal) {
             modal.style.display = 'none';
         }
     };
-    document.addEventListener('keydown', (event) => { // Escキーで閉じる
+    document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && modal.style.display === 'flex') {
             modal.style.display = 'none';
         }
     });
 
-    // イベントリスナー設定
     startGameButton.addEventListener('click', startGame);
     resetGameButton.addEventListener('click', initGame);
 
-    // ゲームの初期化 (初回ロード時)
     initGame();
 });
